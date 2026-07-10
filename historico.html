@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Central de Solicitações — SeuBoné</title>
+<title>Histórico — Central de Solicitações — SeuBoné</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,70 +13,34 @@
     <div class="brand-mark">SB</div>
     <div>
       <h1>Central de Solicitações</h1>
-      <div class="sub">Pedidos para outros setores — visível pra todo mundo</div>
+      <div class="sub">Histórico e indicadores</div>
     </div>
   </div>
   <nav>
-    <a href="index.html" class="active">Central</a>
-    <a href="historico.html">Histórico</a>
+    <a href="index.html">Central</a>
+    <a href="historico.html" class="active">Histórico</a>
   </nav>
 </div>
 
 <div class="container">
 
-  <!-- Formulário de nova solicitação -->
-  <div class="card">
-    <h2>Nova solicitação</h2>
-    <div class="card-sub">Preencha e clique em registrar. Todo mundo com este link vê e pode atualizar o status.</div>
-
-    <div class="row3">
-      <div>
-        <label>Data *</label>
-        <input type="date" id="f-data">
-      </div>
-      <div>
-        <label>ID da compra *</label>
-        <input type="text" id="f-idcompra" placeholder="Ex: 4521">
-      </div>
-      <div>
-        <label>Quem solicitou *</label>
-        <input type="text" id="f-solicitante" placeholder="Seu nome">
-      </div>
-    </div>
-
-    <div class="row2">
-      <div>
-        <label>Tipo de demanda *</label>
-        <select id="f-tipo">
-          <option value="">Selecione</option>
-          <option>Nota fiscal</option>
-          <option>Reembolso</option>
-          <option>Pagamento</option>
-          <option>Outras demandas</option>
-        </select>
-      </div>
-      <div>
-        <label>Link do card</label>
-        <input type="text" id="f-link" placeholder="https://...">
-      </div>
-    </div>
-
-    <label>Observação — opcional</label>
-    <textarea id="f-obs" rows="2" placeholder="Detalhe algo se precisar"></textarea>
-
-    <button class="btn-primary" id="btn-registrar">Registrar solicitação</button>
-    <div class="msg" id="form-msg"></div>
-  </div>
-
   <!-- Indicadores -->
   <div class="stats">
-    <div class="stat"><div class="n" id="st-total">-</div><div class="l">solicitações</div></div>
-    <div class="stat warn"><div class="n" id="st-pendentes">-</div><div class="l">pendentes</div></div>
-    <div class="stat ok"><div class="n" id="st-feitos">-</div><div class="l">já feitos</div></div>
+    <div class="stat"><div class="n" id="st-total">-</div><div class="l">solicitações no período</div></div>
+    <div class="stat ok"><div class="n" id="st-pct">-</div><div class="l">% já concluído</div></div>
+    <div class="stat"><div class="n" id="st-tempo">-</div><div class="l">tempo médio até concluir (dias)</div></div>
   </div>
 
   <!-- Filtros -->
   <div class="filters">
+    <div>
+      <label>De</label>
+      <input type="date" id="ft-de">
+    </div>
+    <div>
+      <label>Até</label>
+      <input type="date" id="ft-ate">
+    </div>
     <div>
       <label>Status</label>
       <select id="ft-status">
@@ -99,6 +63,9 @@
       <label>Buscar (solicitante ou ID da compra)</label>
       <input type="text" id="ft-busca" placeholder="Digite pra filtrar">
     </div>
+    <div>
+      <button class="btn-toggle" id="btn-filtrar">Filtrar</button>
+    </div>
   </div>
 
   <!-- Tabela -->
@@ -113,12 +80,13 @@
           <th>Tipo</th>
           <th>Observação</th>
           <th>Status</th>
+          <th>Feito por</th>
           <th></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
-    <div class="empty" id="empty" style="display:none">Nenhuma solicitação encontrada.</div>
+    <div class="empty" id="empty" style="display:none">Nenhuma solicitação encontrada no período.</div>
   </div>
 
 </div>
@@ -127,23 +95,16 @@
 <script>
 let solicitacoes = [];
 
-function hoje() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
-}
-document.getElementById('f-data').value = hoje();
-
 function formatarData(iso) {
   if (!iso) return '';
   const partes = iso.slice(0, 10).split('-');
   return partes[2] + '/' + partes[1] + '/' + partes[0];
 }
 
-function mostrarMsg(texto, tipo) {
-  const el = document.getElementById('form-msg');
-  el.textContent = texto;
-  el.className = 'msg ' + tipo;
-  setTimeout(() => { el.className = 'msg'; }, 4000);
+function escapeHtml(str) {
+  if (str === undefined || str === null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function carregar() {
@@ -159,11 +120,16 @@ async function carregar() {
 }
 
 function renderizar() {
+  const de = document.getElementById('ft-de').value;
+  const ate = document.getElementById('ft-ate').value;
   const statusFiltro = document.getElementById('ft-status').value;
   const tipoFiltro = document.getElementById('ft-tipo').value;
   const busca = document.getElementById('ft-busca').value.trim().toLowerCase();
 
   let lista = solicitacoes.filter(s => {
+    const dataSol = (s.Data || '').slice(0, 10);
+    if (de && dataSol < de) return false;
+    if (ate && dataSol > ate) return false;
     if (statusFiltro && s.Status !== statusFiltro) return false;
     if (tipoFiltro && s.TipoDemanda !== tipoFiltro) return false;
     if (busca) {
@@ -173,12 +139,30 @@ function renderizar() {
     return true;
   });
 
-  document.getElementById('st-total').textContent = solicitacoes.length;
-  document.getElementById('st-pendentes').textContent = solicitacoes.filter(s => s.Status === 'Pendente').length;
-  document.getElementById('st-feitos').textContent = solicitacoes.filter(s => s.Status === 'Feito').length;
+  // KPIs
+  const total = lista.length;
+  const feitos = lista.filter(s => s.Status === 'Feito');
+  const pct = total ? Math.round((feitos.length / total) * 100) : 0;
+
+  let tempoMedio = '-';
+  const comTempo = feitos.filter(s => s.InseridoEm && s.FeitoEm);
+  if (comTempo.length) {
+    const somaDias = comTempo.reduce((acc, s) => {
+      const dias = (new Date(s.FeitoEm) - new Date(s.InseridoEm)) / (1000 * 60 * 60 * 24);
+      return acc + dias;
+    }, 0);
+    tempoMedio = (somaDias / comTempo.length).toFixed(1);
+  }
+
+  document.getElementById('st-total').textContent = total;
+  document.getElementById('st-pct').textContent = total ? pct + '%' : '-';
+  document.getElementById('st-tempo').textContent = tempoMedio;
 
   const tbody = document.getElementById('tbody');
   const empty = document.getElementById('empty');
+
+  // mais recente primeiro
+  lista = lista.slice().sort((a, b) => new Date(b.InseridoEm) - new Date(a.InseridoEm));
 
   if (lista.length === 0) {
     tbody.innerHTML = '';
@@ -196,17 +180,12 @@ function renderizar() {
       <td>${escapeHtml(s.TipoDemanda)}</td>
       <td>${escapeHtml(s.Observacao) || '—'}</td>
       <td><span class="badge ${s.Status === 'Feito' ? 'ok' : 'warn'}">${s.Status}</span></td>
+      <td>${escapeHtml(s.FeitoPor) || '—'}</td>
       <td><button class="btn-toggle ${s.Status === 'Feito' ? 'pendente' : 'feito'}" onclick="alternarStatus('${s.ID}', '${s.Status}')">
         ${s.Status === 'Feito' ? 'Marcar pendente' : 'Marcar feito'}
       </button></td>
     </tr>
   `).join('');
-}
-
-function escapeHtml(str) {
-  if (str === undefined || str === null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function alternarStatus(id, statusAtual) {
@@ -229,53 +208,13 @@ async function alternarStatus(id, statusAtual) {
   }
 }
 
-document.getElementById('btn-registrar').addEventListener('click', async () => {
-  const idCompra = document.getElementById('f-idcompra').value.trim();
-  const solicitante = document.getElementById('f-solicitante').value.trim();
-  const tipoDemanda = document.getElementById('f-tipo').value;
-  const linkCard = document.getElementById('f-link').value.trim();
-  const observacao = document.getElementById('f-obs').value.trim();
-  const data = document.getElementById('f-data').value;
-
-  if (!idCompra || !solicitante || !tipoDemanda) {
-    mostrarMsg('Preencha data, ID da compra, solicitante e tipo de demanda.', 'err');
-    return;
-  }
-
-  const btn = document.getElementById('btn-registrar');
-  btn.disabled = true;
-  btn.textContent = 'Registrando...';
-
-  try {
-    const resp = await fetch(APP_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'create', data, idCompra, solicitante, tipoDemanda, linkCard, observacao })
-    });
-    const result = await resp.json();
-    if (!result.ok) throw new Error(result.erro || 'erro ao registrar');
-
-    mostrarMsg('Solicitação registrada!', 'ok');
-    document.getElementById('f-idcompra').value = '';
-    document.getElementById('f-solicitante').value = '';
-    document.getElementById('f-tipo').value = '';
-    document.getElementById('f-link').value = '';
-    document.getElementById('f-obs').value = '';
-    document.getElementById('f-data').value = hoje();
-    carregar();
-  } catch (err) {
-    mostrarMsg('Erro: ' + err.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Registrar solicitação';
-  }
-});
-
+document.getElementById('btn-filtrar').addEventListener('click', renderizar);
 document.getElementById('ft-status').addEventListener('change', renderizar);
 document.getElementById('ft-tipo').addEventListener('change', renderizar);
 document.getElementById('ft-busca').addEventListener('input', renderizar);
 
 carregar();
-setInterval(carregar, 20000); // atualiza sozinho a cada 20s
+setInterval(carregar, 20000);
 </script>
 
 </body>

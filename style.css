@@ -81,6 +81,19 @@ body {
 .topbar h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
 .topbar .sub { font-size: 12.5px; color: var(--muted); }
 
+.topbar nav { position: relative; z-index: 1; }
+.topbar nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 18px;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+.topbar nav a:hover { color: #fff; }
+.topbar nav a.active { color: var(--primary); border-bottom-color: var(--primary); }
+
 /* ---------- layout ---------- */
 .container { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
 
@@ -221,3 +234,5 @@ td a:hover { text-decoration: underline; }
 .badge.warn { background: var(--warn-bg); color: var(--warn); }
 
 .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+
+.filters button { margin-top: 0; height: 42px; }
