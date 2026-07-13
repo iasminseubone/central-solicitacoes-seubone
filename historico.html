@@ -24,13 +24,6 @@
 
 <div class="container">
 
-  <!-- Indicadores -->
-  <div class="stats">
-    <div class="stat"><div class="n" id="st-total">-</div><div class="l">solicitações no período</div></div>
-    <div class="stat ok"><div class="n" id="st-pct">-</div><div class="l">% já concluído</div></div>
-    <div class="stat"><div class="n" id="st-tempo">-</div><div class="l">tempo médio até concluir (dias)</div></div>
-  </div>
-
   <!-- Filtros -->
   <div class="filters">
     <div>
@@ -138,25 +131,6 @@ function renderizar() {
     }
     return true;
   });
-
-  // KPIs
-  const total = lista.length;
-  const feitos = lista.filter(s => s.Status === 'Feito');
-  const pct = total ? Math.round((feitos.length / total) * 100) : 0;
-
-  let tempoMedio = '-';
-  const comTempo = feitos.filter(s => s.InseridoEm && s.FeitoEm);
-  if (comTempo.length) {
-    const somaDias = comTempo.reduce((acc, s) => {
-      const dias = (new Date(s.FeitoEm) - new Date(s.InseridoEm)) / (1000 * 60 * 60 * 24);
-      return acc + dias;
-    }, 0);
-    tempoMedio = (somaDias / comTempo.length).toFixed(1);
-  }
-
-  document.getElementById('st-total').textContent = total;
-  document.getElementById('st-pct').textContent = total ? pct + '%' : '-';
-  document.getElementById('st-tempo').textContent = tempoMedio;
 
   const tbody = document.getElementById('tbody');
   const empty = document.getElementById('empty');
