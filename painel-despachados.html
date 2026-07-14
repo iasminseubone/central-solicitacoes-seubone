@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Despachados — Painel Estoque Extrema</title>
+<link rel="stylesheet" href="painel-style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand-mark">SB</div>
+    <div>
+      <h1>Painel de Acompanhamento</h1>
+      <div class="sub">Estoque Extrema</div>
+    </div>
+  </div>
+  <nav>
+    <a class="active" href="painel-despachados.html">Despachados</a>
+    <a href="painel-estoque.html">Em Estoque</a>
+    <a href="painel-correios.html">Correios</a>
+  </nav>
+</div>
+
+<div class="container">
+
+  <div class="stats" id="summary-cards"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Despachados — Extrema</h2>
+        <div class="card-sub" id="badge">Carregando…</div>
+      </div>
+      <button class="btn-toggle" onclick="load()">↻ Atualizar</button>
+    </div>
+    <div class="filters" id="filters">
+      <button class="btn-toggle active" data-filter="all">Todos</button>
+      <button class="btn-toggle" data-filter="Preenchido">Com rastreio</button>
+      <button class="btn-toggle" data-filter="Pendente">Pendentes</button>
+      <button class="btn-toggle" data-filter="Cancelado">Cancelados</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID do pedido</th><th>Código de rastreio</th><th>Transportadora</th><th>Status</th><th></th><th class="col-del"></th></tr></thead>
+        <tbody id="body"><tr><td colspan="6">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="footer-row">
+      <button class="btn-toggle" onclick="addRow()">+ Adicionar pedido</button>
+    </div>
+    <div class="note-text">"Pendente" = ainda sem código de rastreio (calculado automaticamente). Use o botão de status para cancelar/reativar um pedido.</div>
+  </div>
+
+</div>
+
+<div class="saved-flash" id="saved-flash"></div>
+
+<script src="painel-config.js"></script>
+<script src="painel-app.js"></script>
+<script>
+let rows = [];
+let filter = 'all';
+
+function derivedStatus(r) {
+  const raw = (r.status || '').trim();
+  if (raw === 'Cancelado') return 'Cancelado';
+  return r.rastreio ? 'Preenchido' : 'Pendente';
+}
+
+async function load() {
+  document.getElementById('badge').textContent = 'Carregando…';
+  try {
+    rows = await apiGet('despachados');
+    render();
+  } catch (err) {
+    flash('Erro ao carregar: ' + err.message, true);
+  }
+}
+
+function render() {
+  const total = rows.length;
+  const preenchidos = rows.filter(r => derivedStatus(r) === 'Preenchido').length;
+  const pendentes = rows.filter(r => derivedStatus(r) === 'Pendente').length;
+  const cancelados = rows.filter(r => derivedStatus(r) === 'Cancelado').length;
+
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="stat"><div class="n">${total}</div><div class="l">Pedidos despachados</div></div>
+    <div class="stat ok"><div class="n">${preenchidos}</div><div class="l">Com rastreio</div></div>
+    <div class="stat warn"><div class="n">${pendentes}</div><div class="l">Pendentes</div></div>
+    <div class="stat"><div class="n">${cancelados}</div><div class="l">Cancelados</div></div>
+  `;
+  document.getElementById('badge').textContent = `${total} registros · ${preenchidos} com rastreio · ${pendentes} pendentes · ${cancelados} cancelados`;
+
+  const body = document.getElementById('body');
+  const visible = rows.filter(r => filter === 'all' || derivedStatus(r) === filter);
+  if (!visible.length) {
+    body.innerHTML = '<tr><td colspan="6">Nenhum registro nesse filtro.</td></tr>';
+    return;
+  }
+  body.innerHTML = visible.map(r => {
+    const st = derivedStatus(r);
+    const toggleLabel = st === 'Cancelado' ? 'Reativar' : 'Cancelar';
+    return `
+    <tr data-row="${r.rowIndex}">
+      <td><input type="text" value="${escapeAttr(r.id)}" data-field="id"></td>
+      <td><input type="text" value="${escapeAttr(r.rastreio)}" data-field="rastreio"></td>
+      <td><input type="text" value="${escapeAttr(r.transportadora)}" data-field="transportadora"></td>
+      <td>${badgeFor(st)}</td>
+      <td><button class="btn-toggle" onclick="toggleCancel(${r.rowIndex})">${toggleLabel}</button></td>
+      <td class="col-del"><button class="del-btn" title="Remover" onclick="removeRow(${r.rowIndex})">×</button></td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('body').addEventListener('change', async (e) => {
+  const t = e.target;
+  const field = t.dataset.field;
+  if (!field) return;
+  const tr = t.closest('tr');
+  const rowIndex = Number(tr.dataset.row);
+  const row = rows.find(r => r.rowIndex === rowIndex);
+  row[field] = t.value;
+  try {
+    await apiPost({ action: 'update', sheet: 'despachados', rowIndex, fields: { [field]: t.value } });
+    flash('Salvo ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao salvar: ' + err.message, true);
+  }
+});
+
+async function toggleCancel(rowIndex) {
+  const row = rows.find(r => r.rowIndex === rowIndex);
+  const novoStatus = derivedStatus(row) === 'Cancelado' ? 'Normal' : 'Cancelado';
+  try {
+    await apiPost({ action: 'update', sheet: 'despachados', rowIndex, fields: { status: novoStatus } });
+    row.status = novoStatus;
+    flash('Salvo ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao salvar: ' + err.message, true);
+  }
+}
+
+async function addRow() {
+  try {
+    const res = await apiPost({ action: 'create', sheet: 'despachados', fields: { id: '', rastreio: '', transportadora: '', status: 'Normal' } });
+    rows.push({ rowIndex: res.rowIndex, id: '', rastreio: '', transportadora: '', status: 'Normal' });
+    flash('Pedido adicionado ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao adicionar: ' + err.message, true);
+  }
+}
+
+async function removeRow(rowIndex) {
+  if (!confirm('Remover este pedido? Isso limpa a linha na planilha.')) return;
+  try {
+    await apiPost({ action: 'delete', sheet: 'despachados', rowIndex });
+    rows = rows.filter(r => r.rowIndex !== rowIndex);
+    flash('Removido ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao remover: ' + err.message, true);
+  }
+}
+
+document.getElementById('filters').addEventListener('click', (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  filter = e.target.dataset.filter;
+  document.querySelectorAll('#filters button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  render();
+});
+
+load();
+</script>
+</body>
+</html>

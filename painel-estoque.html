@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Em Estoque — Painel Estoque Extrema</title>
+<link rel="stylesheet" href="painel-style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand-mark">SB</div>
+    <div>
+      <h1>Painel de Acompanhamento</h1>
+      <div class="sub">Estoque Extrema</div>
+    </div>
+  </div>
+  <nav>
+    <a href="painel-despachados.html">Despachados</a>
+    <a class="active" href="painel-estoque.html">Em Estoque</a>
+    <a href="painel-correios.html">Correios</a>
+  </nav>
+</div>
+
+<div class="container">
+
+  <div class="stats" id="summary-cards"></div>
+
+  <div class="info-note">
+    ℹ️ Esta lista vem direto da aba "Banco de Dados" (fórmula automática) — por isso o ID não é editável aqui e não dá pra adicionar/remover itens nesta página. Você pode editar a observação e marcar um item como Baixado.
+    <button class="btn-toggle" onclick="load()">↻ Atualizar</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Em Estoque — Extrema</h2>
+        <div class="card-sub" id="badge">Carregando…</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID do pedido</th><th>Situação</th><th>Observação</th></tr></thead>
+        <tbody id="body"><tr><td colspan="3">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="saved-flash" id="saved-flash"></div>
+
+<script src="painel-config.js"></script>
+<script src="painel-app.js"></script>
+<script>
+let rows = [];
+
+async function load() {
+  document.getElementById('badge').textContent = 'Carregando…';
+  try {
+    rows = await apiGet('estoque');
+    render();
+  } catch (err) {
+    flash('Erro ao carregar: ' + err.message, true);
+  }
+}
+
+function render() {
+  const emEstoque = rows.filter(r => r.situacao !== 'Baixado').length;
+  const baixados = rows.filter(r => r.situacao === 'Baixado').length;
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="stat warn"><div class="n">${emEstoque}</div><div class="l">Itens em estoque</div></div>
+    <div class="stat"><div class="n">${baixados}</div><div class="l">Já baixados</div></div>
+  `;
+  document.getElementById('badge').textContent = `${rows.length} itens`;
+
+  const body = document.getElementById('body');
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="3">Nenhum item em estoque.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <tr data-row="${r.rowIndex}">
+      <td>${escapeAttr(r.id)}</td>
+      <td>
+        <select class="status-select" data-field="situacao">
+          <option ${r.situacao === 'Em estoque' ? 'selected' : ''}>Em estoque</option>
+          <option ${r.situacao === 'Baixado' ? 'selected' : ''}>Baixado</option>
+        </select>
+      </td>
+      <td><input type="text" value="${escapeAttr(r.obs)}" data-field="obs"></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('body').addEventListener('change', async (e) => {
+  const t = e.target;
+  const field = t.dataset.field;
+  if (!field) return;
+  const tr = t.closest('tr');
+  const rowIndex = Number(tr.dataset.row);
+  const row = rows.find(r => r.rowIndex === rowIndex);
+  row[field] = t.value;
+  try {
+    await apiPost({ action: 'update', sheet: 'estoque', rowIndex, fields: { [field]: t.value } });
+    flash('Salvo ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao salvar: ' + err.message, true);
+  }
+});
+
+load();
+</script>
+</body>
+</html>

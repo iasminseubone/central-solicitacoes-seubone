@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correios — Painel Estoque Extrema</title>
+<link rel="stylesheet" href="painel-style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand-mark">SB</div>
+    <div>
+      <h1>Painel de Acompanhamento</h1>
+      <div class="sub">Estoque Extrema</div>
+    </div>
+  </div>
+  <nav>
+    <a href="painel-despachados.html">Despachados</a>
+    <a href="painel-estoque.html">Em Estoque</a>
+    <a class="active" href="painel-correios.html">Correios</a>
+  </nav>
+</div>
+
+<div class="container">
+
+  <div class="stats" id="summary-cards"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Correios — Extrema</h2>
+        <div class="card-sub" id="badge">Carregando…</div>
+      </div>
+      <button class="btn-toggle" onclick="load()">↻ Atualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID do pedido</th><th>Código de rastreio</th><th>NF</th><th>Transportadora</th><th class="col-del"></th></tr></thead>
+        <tbody id="body"><tr><td colspan="5">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="footer-row">
+      <button class="btn-toggle" onclick="addRow()">+ Adicionar envio</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="saved-flash" id="saved-flash"></div>
+
+<script src="painel-config.js"></script>
+<script src="painel-app.js"></script>
+<script>
+let rows = [];
+
+async function load() {
+  document.getElementById('badge').textContent = 'Carregando…';
+  try {
+    rows = await apiGet('correios');
+    render();
+  } catch (err) {
+    flash('Erro ao carregar: ' + err.message, true);
+  }
+}
+
+function render() {
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="stat"><div class="n">${rows.length}</div><div class="l">Envios via Correios</div></div>
+  `;
+  document.getElementById('badge').textContent = `${rows.length} registros`;
+
+  const body = document.getElementById('body');
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5">Nenhum envio registrado.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => `
+    <tr data-row="${r.rowIndex}">
+      <td><input type="text" value="${escapeAttr(r.id)}" data-field="id"></td>
+      <td><input type="text" value="${escapeAttr(r.rastreio)}" data-field="rastreio"></td>
+      <td><input type="text" value="${escapeAttr(r.nf)}" data-field="nf"></td>
+      <td><input type="text" value="${escapeAttr(r.transportadora)}" data-field="transportadora"></td>
+      <td class="col-del"><button class="del-btn" title="Remover" onclick="removeRow(${r.rowIndex})">×</button></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('body').addEventListener('change', async (e) => {
+  const t = e.target;
+  const field = t.dataset.field;
+  if (!field) return;
+  const tr = t.closest('tr');
+  const rowIndex = Number(tr.dataset.row);
+  const row = rows.find(r => r.rowIndex === rowIndex);
+  row[field] = t.value;
+  try {
+    await apiPost({ action: 'update', sheet: 'correios', rowIndex, fields: { [field]: t.value } });
+    flash('Salvo ✓');
+  } catch (err) {
+    flash('Erro ao salvar: ' + err.message, true);
+  }
+});
+
+async function addRow() {
+  try {
+    const res = await apiPost({ action: 'create', sheet: 'correios', fields: { id: '', rastreio: '', nf: '', transportadora: 'CORREIOS', status: 'Normal' } });
+    rows.push({ rowIndex: res.rowIndex, id: '', rastreio: '', nf: '', transportadora: 'CORREIOS' });
+    flash('Envio adicionado ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao adicionar: ' + err.message, true);
+  }
+}
+
+async function removeRow(rowIndex) {
+  if (!confirm('Remover este envio? Isso limpa a linha na planilha.')) return;
+  try {
+    await apiPost({ action: 'delete', sheet: 'correios', rowIndex });
+    rows = rows.filter(r => r.rowIndex !== rowIndex);
+    flash('Removido ✓');
+    render();
+  } catch (err) {
+    flash('Erro ao remover: ' + err.message, true);
+  }
+}
+
+load();
+</script>
+</body>
+</html>
