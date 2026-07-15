@@ -72,6 +72,7 @@
           <th>Solicitante</th>
           <th>Tipo</th>
           <th>Observação</th>
+          <th>Anexos</th>
           <th>Status</th>
           <th>Feito por</th>
           <th></th>
@@ -98,6 +99,20 @@ function escapeHtml(str) {
   if (str === undefined || str === null) return '';
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderizarAnexos(anexosJson) {
+  if (!anexosJson) return '—';
+  let anexos;
+  try {
+    anexos = JSON.parse(anexosJson);
+  } catch (e) {
+    return '—';
+  }
+  if (!anexos || !anexos.length) return '—';
+  return anexos.map((a, i) =>
+    `<a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.nome) || ('anexo ' + (i + 1))}</a>`
+  ).join('<br>');
 }
 
 async function carregar() {
@@ -153,6 +168,7 @@ function renderizar() {
       <td>${escapeHtml(s.Solicitante)}</td>
       <td>${escapeHtml(s.TipoDemanda)}</td>
       <td>${escapeHtml(s.Observacao) || '—'}</td>
+      <td>${renderizarAnexos(s.Anexos)}</td>
       <td><span class="badge ${s.Status === 'Feito' ? 'ok' : 'warn'}">${s.Status}</span></td>
       <td>${escapeHtml(s.FeitoPor) || '—'}</td>
       <td><button class="btn-toggle ${s.Status === 'Feito' ? 'pendente' : 'feito'}" onclick="alternarStatus('${s.ID}', '${s.Status}')">
