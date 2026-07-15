@@ -110,9 +110,14 @@ function renderizarAnexos(anexosJson) {
     return '—';
   }
   if (!anexos || !anexos.length) return '—';
-  return anexos.map((a, i) =>
-    `<a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.nome) || ('anexo ' + (i + 1))}</a>`
-  ).join('<br>');
+  return anexos.map((a, i) => {
+    const nome = escapeHtml(a.nome) || ('anexo ' + (i + 1));
+    const abrir = `<a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${nome}</a>`;
+    const download = a.downloadUrl
+      ? ` <a href="${escapeHtml(a.downloadUrl)}" target="_blank" rel="noopener" title="Baixar ${nome}">(baixar)</a>`
+      : '';
+    return abrir + download;
+  }).join('<br>');
 }
 
 async function carregar() {
