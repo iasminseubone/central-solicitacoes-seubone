@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Histórico — Central de Solicitações — SeuBoné</title>
+<title>Histórico — Registro de Demandas Gerais — Grupo SB</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,12 +12,12 @@
   <div class="topbar-left">
     <div class="brand-mark">SB</div>
     <div>
-      <h1>Central de Solicitações</h1>
-      <div class="sub">Histórico e indicadores</div>
+      <h1>Registro de Demandas Gerais</h1>
+      <div class="sub">Histórico e acompanhamento</div>
     </div>
   </div>
   <nav>
-    <a href="index.html">Central</a>
+    <a href="index.html">Registro de Demandas Gerais</a>
     <a href="historico.html" class="active">Histórico</a>
   </nav>
 </div>
@@ -43,17 +43,38 @@
       </select>
     </div>
     <div>
-      <label>Tipo de demanda</label>
-      <select id="ft-tipo">
-        <option value="">Todos</option>
-        <option>Nota fiscal</option>
-        <option>Reembolso</option>
-        <option>Pagamento</option>
-        <option>Outras demandas</option>
+      <label>Empresa</label>
+      <select id="ft-empresa">
+        <option value="">Todas</option>
+        <option>SeuBoné</option>
       </select>
     </div>
     <div>
-      <label>Buscar (solicitante ou ID da compra)</label>
+      <label>Demanda solicitada</label>
+      <select id="ft-demanda">
+        <option value="">Todas</option>
+        <option>NF Urgente</option>
+        <option>Nota de Remessa</option>
+        <option>Baixa de comprovante</option>
+        <option>Análise de termo de compromisso</option>
+        <option>Nota de Conta e Ordem</option>
+        <option>Link de pagamento</option>
+        <option>Orçamento - Extrema/MG</option>
+        <option>Ajuste de nota fiscal</option>
+        <option>Ajuste de orçamento</option>
+        <option>Envio de boleto</option>
+        <option>Liberação p/envio</option>
+        <option>Nota de Devolução</option>
+        <option>Amostras</option>
+        <option>Nota de Brinde</option>
+        <option>Manifesto</option>
+        <option>Cancelamento de Boleto</option>
+        <option>Pedidos retidos</option>
+        <option>Outros</option>
+      </select>
+    </div>
+    <div>
+      <label>Buscar (solicitante ou ID da venda)</label>
       <input type="text" id="ft-busca" placeholder="Digite pra filtrar">
     </div>
     <div>
@@ -67,11 +88,13 @@
       <thead>
         <tr>
           <th>Data</th>
-          <th>ID compra</th>
+          <th>Vencimento</th>
+          <th>ID venda</th>
           <th>Card</th>
           <th>Solicitante</th>
-          <th>Tipo</th>
-          <th>Observação</th>
+          <th>Empresa</th>
+          <th>Demanda</th>
+          <th>Descrição</th>
           <th>Anexos</th>
           <th>Status</th>
           <th>Feito por</th>
@@ -136,7 +159,8 @@ function renderizar() {
   const de = document.getElementById('ft-de').value;
   const ate = document.getElementById('ft-ate').value;
   const statusFiltro = document.getElementById('ft-status').value;
-  const tipoFiltro = document.getElementById('ft-tipo').value;
+  const empresaFiltro = document.getElementById('ft-empresa').value;
+  const demandaFiltro = document.getElementById('ft-demanda').value;
   const busca = document.getElementById('ft-busca').value.trim().toLowerCase();
 
   let lista = solicitacoes.filter(s => {
@@ -144,7 +168,8 @@ function renderizar() {
     if (de && dataSol < de) return false;
     if (ate && dataSol > ate) return false;
     if (statusFiltro && s.Status !== statusFiltro) return false;
-    if (tipoFiltro && s.TipoDemanda !== tipoFiltro) return false;
+    if (empresaFiltro && s.Empresa !== empresaFiltro) return false;
+    if (demandaFiltro && s.DemandaSolicitada !== demandaFiltro) return false;
     if (busca) {
       const alvo = (s.Solicitante + ' ' + s.IDCompra).toLowerCase();
       if (!alvo.includes(busca)) return false;
@@ -168,10 +193,12 @@ function renderizar() {
   tbody.innerHTML = lista.map(s => `
     <tr>
       <td>${formatarData(s.Data)}</td>
+      <td>${formatarData(s.DataVencimento) || '—'}</td>
       <td>${escapeHtml(s.IDCompra)}</td>
       <td>${s.LinkCard ? `<a href="${escapeHtml(s.LinkCard)}" target="_blank" rel="noopener">abrir card</a>` : '—'}</td>
       <td>${escapeHtml(s.Solicitante)}</td>
-      <td>${escapeHtml(s.TipoDemanda)}</td>
+      <td>${escapeHtml(s.Empresa) || '—'}</td>
+      <td>${escapeHtml(s.DemandaSolicitada) || '—'}</td>
       <td>${escapeHtml(s.Observacao) || '—'}</td>
       <td>${renderizarAnexos(s.Anexos)}</td>
       <td><span class="badge ${s.Status === 'Feito' ? 'ok' : 'warn'}">${s.Status}</span></td>
@@ -205,7 +232,8 @@ async function alternarStatus(id, statusAtual) {
 
 document.getElementById('btn-filtrar').addEventListener('click', renderizar);
 document.getElementById('ft-status').addEventListener('change', renderizar);
-document.getElementById('ft-tipo').addEventListener('change', renderizar);
+document.getElementById('ft-empresa').addEventListener('change', renderizar);
+document.getElementById('ft-demanda').addEventListener('change', renderizar);
 document.getElementById('ft-busca').addEventListener('input', renderizar);
 
 carregar();
