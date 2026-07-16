@@ -149,9 +149,17 @@ function mostrarMsg(texto, tipo) {
 const N8N_WEBHOOK_URL = 'https://n8n.seubone.com/webhook/3e637127-3112-452c-866e-e174f3ca2dad';
 
 function dispararWebhookN8n(payload) {
+  // Envia como form urlencoded (em vez de um JSON só) para que o n8n
+  // receba cada campo separado (body.id, body.solicitante, body.empresa...)
+  // em vez de tudo dentro de uma única string.
+  const params = new URLSearchParams();
+  Object.keys(payload).forEach(key => {
+    const valor = payload[key];
+    params.append(key, typeof valor === 'object' && valor !== null ? JSON.stringify(valor) : (valor ?? ''));
+  });
   fetch(N8N_WEBHOOK_URL, {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: params
   }).catch(err => console.error('Falha ao disparar webhook n8n:', err));
 }
 
