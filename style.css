@@ -39,10 +39,9 @@ body::before {
   position: fixed;
   inset: 0;
   background-image: url('marca-dagua.png');
-  background-repeat: no-repeat;
-  background-position: bottom right;
-  background-size: 380px;
-  opacity: 0.06;
+  background-repeat: repeat;
+  background-size: 220px;
+  opacity: 0.08;
   pointer-events: none;
   z-index: 0;
 }
