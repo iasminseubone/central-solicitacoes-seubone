@@ -30,7 +30,23 @@ body {
   color: var(--text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  position: relative;
 }
+
+/* ---------- marca d'água ---------- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('marca-dagua.png');
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  background-size: 380px;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+.topbar, .container { position: relative; z-index: 1; }
 
 /* ---------- topbar ---------- */
 .topbar {
